@@ -22,10 +22,10 @@ func reader(wg *sync.WaitGroup, conn *net.TCPConn) {
 
 func sender(start <-chan struct{}, conn *net.TCPConn) {
 	<-start
-	for i := 0; i<nMessages; i++ {
+	for i := 0; i < nMessages; i++ {
 		conn.Write([]byte("Hello, World\n"))
 	}
-    conn.CloseWrite()
+	conn.CloseWrite()
 }
 
 func startClient(wg *sync.WaitGroup, start <-chan struct{}) {
@@ -33,7 +33,7 @@ func startClient(wg *sync.WaitGroup, start <-chan struct{}) {
 	if err != nil {
 		panic(err)
 	}
-    tconn := conn.(*net.TCPConn)
+	tconn := conn.(*net.TCPConn)
 	go reader(wg, tconn)
 	go sender(start, tconn)
 }
@@ -47,7 +47,7 @@ func main() {
 	start := make(chan struct{})
 	wg := sync.WaitGroup{}
 
-	for i := 0; i<nClients; i++ {
+	for i := 0; i < nClients; i++ {
 		startClient(&wg, start)
 	}
 	close(start)
