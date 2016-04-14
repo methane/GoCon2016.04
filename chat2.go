@@ -16,50 +16,55 @@ import (
 
 type client chan<- string // an outgoing message channel
 
+type cmdEnter struct {
+	c client
+}
+
+type cmdLeave struct {
+	c client
+}
+
+type cmdMessage struct {
+	m string
+}
+
 var (
-	entering = make(chan client)
-	leaving  = make(chan client)
-	messages = make(chan string) // all incoming client messages
+	cmdQueue = make(chan interface{}, 128)
 )
 
 func broadcaster() {
 	clients := make(map[client]bool) // all connected clients
-	for {
-		select {
-		case msg := <-messages:
-			// Broadcast incoming message to all
-			// clients' outgoing message channels.
+	for cmd := range cmdQueue {
+		switch cmd := cmd.(type) {
+		case cmdEnter:
+			clients[cmd.c] = true
+		case cmdLeave:
+			delete(clients, cmd.c)
+			close(cmd.c)
+		case cmdMessage:
 			for cli := range clients {
-				cli <- msg
+				cli <- cmd.m
 			}
-
-		case cli := <-entering:
-			clients[cli] = true
-
-		case cli := <-leaving:
-			delete(clients, cli)
-			close(cli)
 		}
 	}
 }
 
 func handleConn(conn net.Conn) {
-	ch := make(chan string) // outgoing client messages
+	ch := make(chan string, 128) // outgoing client messages
 	go clientWriter(conn, ch)
 
 	who := conn.RemoteAddr().String()
 	ch <- "You are " + who
-	messages <- who + " has arrived"
-	entering <- ch
+	cmdQueue <- cmdMessage{who + " has arrived"}
+	cmdQueue <- cmdEnter{ch}
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		messages <- who + ": " + input.Text()
+		cmdQueue <- cmdMessage{who + ": " + input.Text()}
 	}
-	// NOTE: ignoring potential errors from input.Err()
 
-	leaving <- ch
-	messages <- who + " has left"
+	cmdQueue <- cmdLeave{ch}
+	cmdQueue <- cmdMessage{who + " has left"}
 	conn.Close()
 }
 
