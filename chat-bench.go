@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"sync"
+	"time"
 )
 
 var (
@@ -40,7 +41,7 @@ func startClient(wg *sync.WaitGroup, start <-chan struct{}) {
 
 func main() {
 	flag.IntVar(&nClients, "clients", 1000, "Number of clients")
-	flag.IntVar(&nMessages, "messages", 10000, "Number of messages per each clients")
+	flag.IntVar(&nMessages, "messages", 1000000, "Number of messages per each clients")
 	flag.IntVar(&portNo, "port", 8000, "Port number")
 	flag.Parse()
 
@@ -50,6 +51,8 @@ func main() {
 	for i := 0; i < nClients; i++ {
 		startClient(&wg, start)
 	}
+	t0 := time.Now()
 	close(start)
 	wg.Wait()
+	fmt.Println(time.Now().Sub(t0))
 }
