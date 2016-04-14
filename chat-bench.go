@@ -47,6 +47,7 @@ func main() {
 
 	start := make(chan struct{})
 	wg := sync.WaitGroup{}
+	wg.Add(nClients)
 
 	for i := 0; i < nClients; i++ {
 		startClient(&wg, start)
