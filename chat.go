@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"runtime/pprof"
 )
 
 type client chan<- string // an outgoing message channel
@@ -66,6 +69,17 @@ func clientWriter(conn net.Conn, ch <-chan string) {
 	}
 }
 
+func listen(l net.Listener) {
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		go handleConn(conn)
+	}
+}
+
 func main() {
 	listener, err := net.Listen("tcp", "localhost:8000")
 	if err != nil {
@@ -73,12 +87,12 @@ func main() {
 	}
 
 	go broadcaster()
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Print(err)
-			continue
-		}
-		go handleConn(conn)
+	go listen(listener)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	for range c {
+		prof := pprof.Lookup("goroutine")
+		prof.WriteTo(os.Stderr, 1)
 	}
 }
