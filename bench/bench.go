@@ -23,10 +23,13 @@ func reader(wg *sync.WaitGroup, conn *net.TCPConn) {
 
 func sender(start <-chan struct{}, conn *net.TCPConn) {
 	<-start
+	defer conn.CloseWrite()
 	for i := 0; i < nMessages; i++ {
-		conn.Write([]byte("Hello, World\n"))
+		_, err := conn.Write([]byte("Hello, World\n"))
+		if err != nil {
+			panic(err)
+		}
 	}
-	conn.CloseWrite()
 }
 
 func startClient(wg *sync.WaitGroup, start <-chan struct{}) {
@@ -40,8 +43,8 @@ func startClient(wg *sync.WaitGroup, start <-chan struct{}) {
 }
 
 func main() {
-	flag.IntVar(&nClients, "clients", 1000, "Number of clients")
-	flag.IntVar(&nMessages, "messages", 1000000, "Number of messages per each clients")
+	flag.IntVar(&nClients, "clients", 100, "Number of clients")
+	flag.IntVar(&nMessages, "messages", 1000, "Number of messages per each clients")
 	flag.IntVar(&portNo, "port", 8000, "Port number")
 	flag.Parse()
 
