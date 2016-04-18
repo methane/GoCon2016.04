@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -30,6 +31,7 @@ type cmdMessage struct {
 
 var (
 	cmdQueue = make(chan interface{}, 128)
+	wsem     = make(chan struct{}, 2) // counting semaphore to restrict concurrent write
 )
 
 func broadcaster() {
@@ -65,12 +67,31 @@ func handleConn(conn net.Conn) {
 
 	cmdQueue <- cmdLeave{ch}
 	cmdQueue <- cmdMessage{who + " has left"}
-	conn.Close()
 }
 
 func clientWriter(conn net.Conn, ch <-chan string) {
-	for msg := range ch {
-		fmt.Fprintln(conn, msg) // NOTE: ignoring network errors
+	var c chan struct{}
+	buf := bytes.Buffer{}
+	defer conn.Close()
+	for {
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				buf.WriteTo(conn)
+				return
+			}
+			fmt.Fprintln(&buf, msg)
+			c = wsem
+		case c <- struct{}{}:
+			_, err := buf.WriteTo(conn)
+			<-c
+			if err != nil {
+				return
+			}
+			if buf.Len() == 0 {
+				c = nil
+			}
+		}
 	}
 }
 
