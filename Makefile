@@ -1,5 +1,5 @@
 all:
 	go build -o bin/bench ./bench
-	go build -o bin/chat1 ./chat1
-	go build -o bin/chat2 ./chat2
-	go build -o bin/chat3 ./chat3
+	go build -o bin/chat-original ./chat-original
+	go build -o bin/chat-step1 ./chat-step1
+	go build -o bin/chat-step2 ./chat-step2
